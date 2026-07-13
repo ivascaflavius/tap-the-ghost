@@ -1,0 +1,840 @@
+'use strict';
+
+/* ============================== constants ============================== */
+
+const START_LIVES = 3;
+const GOOD_CHANCE = 0.32;
+
+/* scoring is the same on every difficulty */
+const POINTS_TAP_BAD = 3;   // zapped a bad guy
+const POINTS_MISS_BAD = -1; // a bad guy escaped untapped
+const POINTS_SAVE_GOOD = 1; // a good guy left safely
+
+const BAD_GUYS = ['👻', '🧛', '🐺', '🎃', '💀', '😈', '🧟', '🧙'];
+const GOOD_GUYS = ['🐶', '🐱', '🐼', '🐰', '🦉', '🐥'];
+
+/* difficulties differ only in total timer, spawn frequency and reaction window */
+const DIFFICULTIES = {
+  easy:   { label: 'EASY',   seconds: 90,  stay: 2600, gapMin: 700, gapMax: 1500 },
+  medium: { label: 'MEDIUM', seconds: 120, stay: 1800, gapMin: 450, gapMax: 1000 },
+  hard:   { label: 'HARD',   seconds: 180, stay: 1150, gapMin: 300, gapMax: 700 },
+};
+const DIFF_ORDER = ['easy', 'medium', 'hard'];
+
+const LS_SETTINGS = 'ttg-settings';
+const LS_SCORES = 'ttg-scores-v2';
+const MAX_SCORES = 8;
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/* window layout on the manor facade (must match the house in index.html) */
+const WIN_W = 84, WIN_H = 92;
+const WIN_COLS = [248, 378, 508];
+const WIN_ROWS = [300, 430, 560, 690];
+
+/* ============================== helpers ============================== */
+
+const $ = (sel) => document.querySelector(sel);
+const rand = (min, max) => min + Math.random() * (max - min);
+const randInt = (n) => Math.floor(Math.random() * n);
+const pick = (arr) => arr[randInt(arr.length)];
+
+function loadJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch { return fallback; }
+}
+
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+/* ============================== settings ============================== */
+
+const settings = Object.assign({ sound: true, difficulty: 'easy', playerName: '' }, loadJSON(LS_SETTINGS, {}));
+if (!DIFFICULTIES[settings.difficulty]) settings.difficulty = 'easy';
+
+function saveSettings() {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+}
+
+function refreshSettingsUI() {
+  const soundVal = $('#val-sound');
+  soundVal.textContent = settings.sound ? 'ON' : 'OFF';
+  soundVal.classList.toggle('good', settings.sound);
+  const diffVal = $('#val-difficulty');
+  diffVal.textContent = DIFFICULTIES[settings.difficulty].label;
+  diffVal.classList.toggle('good', settings.difficulty === 'easy');
+  $('#inp-name').value = settings.playerName;
+}
+
+function refreshMenuInfo() {
+  $('#menu-player').textContent = settings.playerName || 'unnamed';
+  const best = bestOverall();
+  const el = $('#menu-best');
+  if (best) {
+    el.style.display = 'block';
+    el.innerHTML = '';
+    el.append('🏆 Best: ');
+    const b = document.createElement('b');
+    b.textContent = `${best.score} — ${best.name || 'unnamed'}`;
+    el.append(b, ` (${DIFFICULTIES[best.diff].label})`);
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+/* ============================== sound (WebAudio, no assets) ============================== */
+
+const sound = {
+  ctx: null,
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(f0, f1, dur, type = 'sine', vol = 0.2, delay = 0) {
+    if (!settings.sound) return;
+    this.ensure();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(Math.max(f0, 1), t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  },
+  click() { this.tone(600, 600, 0.06, 'sine', 0.12); },
+  pop()   { this.tone(280, 720, 0.12, 'sine', 0.16); },
+  zap()   { this.tone(950, 70, 0.22, 'sawtooth', 0.22); this.tone(1500, 110, 0.18, 'square', 0.08); },
+  hurt()  { this.tone(240, 80, 0.4, 'square', 0.22); this.tone(180, 60, 0.45, 'sawtooth', 0.1); },
+  miss()  { this.tone(220, 130, 0.18, 'sine', 0.12); },
+  save()  { this.tone(760, 980, 0.14, 'sine', 0.1); },
+  over()  { [392, 330, 262, 196].forEach((f, i) => this.tone(f, f * 0.97, 0.26, 'triangle', 0.2, i * 0.24)); },
+  fanfare() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, f, 0.18, 'triangle', 0.2, i * 0.14)); },
+};
+
+document.addEventListener('pointerdown', () => sound.ensure(), { once: true });
+
+/* ============================== highscores (one board per difficulty) ============================== */
+
+function getBoards() {
+  const boards = loadJSON(LS_SCORES, {});
+  for (const key of DIFF_ORDER) if (!Array.isArray(boards[key])) boards[key] = [];
+  return boards;
+}
+
+function saveBoards(boards) {
+  localStorage.setItem(LS_SCORES, JSON.stringify(boards));
+}
+
+function addScore(score) {
+  const boards = getBoards();
+  const entry = { score, name: settings.playerName, date: Date.now() };
+  const board = boards[settings.difficulty];
+  board.push(entry);
+  board.sort((a, b) => b.score - a.score || a.date - b.date);
+  boards[settings.difficulty] = board.slice(0, MAX_SCORES);
+  saveBoards(boards);
+  return { rank: boards[settings.difficulty].indexOf(entry), entry };
+}
+
+function bestOverall() {
+  let best = null;
+  const boards = getBoards();
+  for (const diff of DIFF_ORDER) {
+    const top = boards[diff][0];
+    if (top && (!best || top.score > best.score)) best = { ...top, diff };
+  }
+  return best;
+}
+
+let scoreTab = 'easy';
+
+function renderScores() {
+  const board = getBoards()[scoreTab];
+  document.querySelectorAll('.hs-tab').forEach((t) => t.classList.toggle('on', t.dataset.board === scoreTab));
+  const list = $('#hs-list');
+  list.innerHTML = '';
+  $('#hs-empty').style.display = board.length ? 'none' : 'block';
+  $('#btn-clear-scores').style.display = board.length ? 'flex' : 'none';
+  for (const s of board) {
+    const li = document.createElement('li');
+    const scoreEl = document.createElement('span');
+    scoreEl.className = 'hs-score';
+    scoreEl.textContent = s.score;
+    const nameEl = document.createElement('span');
+    nameEl.className = 'hs-name';
+    nameEl.textContent = s.name || 'unnamed';
+    const meta = document.createElement('span');
+    meta.className = 'hs-meta';
+    meta.textContent = new Date(s.date).toLocaleDateString();
+    li.append(scoreEl, nameEl, meta);
+    list.appendChild(li);
+  }
+}
+
+/* remembers the entry from the last game so a late-entered name can be attached to it */
+let lastEntryKey = null;
+
+function commitPlayerName(name) {
+  settings.playerName = name;
+  saveSettings();
+  refreshSettingsUI();
+  if (lastEntryKey) {
+    const boards = getBoards();
+    const entry = boards[lastEntryKey.diff].find((e) => e.date === lastEntryKey.date);
+    if (entry && !entry.name) {
+      entry.name = name;
+      saveBoards(boards);
+    }
+  }
+}
+
+/* ============================== screens ============================== */
+
+function show(name) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  $(`#screen-${name}`).classList.add('active');
+  if (name === 'scores') { scoreTab = settings.difficulty; renderScores(); }
+  if (name === 'menu') refreshMenuInfo();
+}
+
+/* ============================== scene setup ============================== */
+
+const windows = []; // { g, charEl, cx, cy }
+
+function buildSkyStars() {
+  const group = $('#skyStars');
+  for (let i = 0; i < 40; i++) {
+    const x = rand(10, 790);
+    const y = rand(10, 560);
+    if (Math.hypot(x - 130, y - 115) < 80) continue; // keep clear of the moon
+    const star = svgEl('circle', { cx: x, cy: y, r: rand(1, 2.6), fill: '#fff', class: 'sky-star' });
+    star.style.animationDelay = `${rand(0, 3)}s`;
+    group.appendChild(star);
+  }
+}
+
+function buildMenuStars() {
+  const holder = $('#stars');
+  for (let i = 0; i < 70; i++) {
+    const s = document.createElement('span');
+    s.className = 'star';
+    const size = rand(1, 3);
+    s.style.width = s.style.height = `${size}px`;
+    s.style.left = `${rand(0, 100)}%`;
+    s.style.top = `${rand(0, 100)}%`;
+    s.style.animationDelay = `${rand(0, 3)}s`;
+    holder.appendChild(s);
+  }
+}
+
+/* --- flying bats with flapping wings --- */
+function buildBats() {
+  const group = $('#flyingBats');
+  const spots = [
+    { x: 150, y: 400, fly: 'fly1', s: 1.0 },
+    { x: 630, y: 330, fly: 'fly2', s: 1.2 },
+    { x: 290, y: 190, fly: 'fly3', s: 0.8 },
+    { x: 540, y: 480, fly: 'fly2', s: 0.7 },
+    { x: 100, y: 250, fly: 'fly1', s: 0.9 },
+  ];
+  for (const spot of spots) {
+    const pos = svgEl('g', { transform: `translate(${spot.x} ${spot.y}) scale(${spot.s})` });
+    const bat = svgEl('g', { class: `fbat ${spot.fly}` });
+    bat.style.setProperty('--dur', `${rand(9, 16).toFixed(1)}s`);
+    bat.style.animationDelay = `${-rand(0, 10).toFixed(1)}s`;
+
+    const wl = svgEl('path', { class: 'wing wl', d: 'M-2 0 Q -13 -12 -30 -6 Q -22 2 -13 5 Q -6 6 -2 3 Z' });
+    const wr = svgEl('path', { class: 'wing wr', d: 'M2 0 Q 13 -12 30 -6 Q 22 2 13 5 Q 6 6 2 3 Z' });
+    const body = svgEl('ellipse', { cx: 0, cy: 0, rx: 4.5, ry: 7 });
+    const ears = svgEl('path', { d: 'M-3.5 -5 L -2 -10 L 0 -5.5 L 2 -10 L 3.5 -5 Z' });
+    wl.style.animationDelay = `${-rand(0, 0.24).toFixed(2)}s`;
+    wr.style.animationDelay = wl.style.animationDelay;
+
+    bat.append(wl, wr, body, ears);
+    pos.appendChild(bat);
+    group.appendChild(pos);
+  }
+}
+
+/* --- bushes and shrubs with eyes that glow on and off ---
+   Two depth layers: tall near-black silhouettes in the back (where most of the
+   eyes hide) and smaller, greener bushes up front. */
+const SHRUB_DARKS = ['#040806', '#060b08', '#071009', '#050a07'];
+const BUSH_GREENS = ['#0d2416', '#123020', '#0a1c10', '#0f2a1a'];
+const EYE_COLORS = ['#ffd75e', '#b7f36b', '#ff9a4d', '#e8e8e8', '#8fd4ff'];
+
+function makeShrub(group, spot, palette, tall, withEyes) {
+  const g = svgEl('g', { transform: `translate(${spot.x} ${spot.y}) scale(${spot.s})` });
+  const clumps = tall ? 5 : 4;
+  for (let i = 0; i < clumps; i++) {
+    g.appendChild(svgEl('ellipse', {
+      cx: rand(-30, 30),
+      cy: tall ? rand(-46, -4) : rand(-8, 2),
+      rx: rand(22, 42),
+      ry: tall ? rand(28, 52) : rand(16, 26),
+      fill: pick(palette),
+    }));
+  }
+  if (withEyes) {
+    const eyes = svgEl('g', { class: 'bush-eyes' });
+    const color = pick(EYE_COLORS);
+    const ex = rand(-16, 6), ey = tall ? rand(-42, -12) : rand(-14, -4), gap = rand(11, 15);
+    for (const dx of [0, gap]) {
+      eyes.appendChild(svgEl('ellipse', { cx: ex + dx, cy: ey, rx: 4, ry: 5, fill: color }));
+      eyes.appendChild(svgEl('circle', { cx: ex + dx, cy: ey + 1, r: 1.8, fill: '#111' }));
+    }
+    g.appendChild(eyes);
+    cycleEyes(eyes);
+  }
+  group.appendChild(g);
+}
+
+function buildShrubsBack() {
+  const group = $('#shrubsBack');
+  // tall silhouettes clustered around the tree bases and the far edges
+  const spots = [
+    { x: 35,  y: 876, s: 1.2 },  { x: 105, y: 878, s: 1.35 },
+    { x: 175, y: 876, s: 1.1 },  { x: 655, y: 876, s: 1.15 },
+    { x: 725, y: 878, s: 1.3 },  { x: 785, y: 876, s: 1.05 },
+  ];
+  for (const spot of spots) {
+    // nearly all the eyes lurk in the dark back layer
+    makeShrub(group, spot, SHRUB_DARKS, true, Math.random() < 0.8);
+  }
+}
+
+function buildBushes() {
+  const group = $('#bushes');
+  // smaller green bushes in the foreground
+  const spots = [
+    { x: 62,  y: 880, s: 0.85 }, { x: 150, y: 884, s: 0.7 },
+    { x: 228, y: 884, s: 0.6 },  { x: 330, y: 888, s: 0.5 },
+    { x: 520, y: 886, s: 0.55 }, { x: 615, y: 884, s: 0.7 },
+    { x: 702, y: 880, s: 0.8 },  { x: 772, y: 884, s: 0.65 },
+  ];
+  for (const spot of spots) {
+    // only the occasional pair of eyes up front, in the lighter green
+    makeShrub(group, spot, BUSH_GREENS, false, Math.random() < 0.25);
+  }
+}
+
+function cycleEyes(eyes) {
+  setTimeout(() => {
+    eyes.classList.add('on');
+    setTimeout(() => {
+      eyes.classList.remove('on');
+      cycleEyes(eyes);
+    }, rand(1200, 4200));
+  }, rand(2500, 9500));
+}
+
+/* --- ivy vines creeping up the manor walls --- */
+const LEAF_GREENS = ['#123a1e', '#0d2c17', '#16401f', '#0f331a'];
+
+function growVine(x0, y0, y1, drift) {
+  const group = $('#vines');
+  const steps = Math.max(4, Math.round((y0 - y1) / 32));
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const y = y0 - ((y0 - y1) * i) / steps;
+    const x = x0 + Math.sin(i * 1.35) * drift + rand(-4, 4);
+    pts.push([x, y]);
+  }
+  const d = 'M' + pts.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L ');
+  group.appendChild(svgEl('path', {
+    d, fill: 'none', stroke: '#14301c', 'stroke-width': 4.5,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.95,
+  }));
+  for (let i = 1; i < pts.length; i++) {
+    const leaves = 2 + randInt(2);
+    for (let l = 0; l < leaves; l++) {
+      const leaf = svgEl('ellipse', {
+        cx: pts[i][0] + rand(-11, 11), cy: pts[i][1] + rand(-9, 9),
+        rx: rand(5, 9), ry: rand(3, 5),
+        fill: pick(LEAF_GREENS),
+        transform: `rotate(${rand(0, 180).toFixed(0)} ${pts[i][0].toFixed(0)} ${pts[i][1].toFixed(0)})`,
+      });
+      group.appendChild(leaf);
+    }
+  }
+}
+
+function scatterLeaves(xMin, xMax, y, count) {
+  const group = $('#vines');
+  for (let i = 0; i < count; i++) {
+    const cx = rand(xMin, xMax), cy = y + rand(-10, 6);
+    group.appendChild(svgEl('ellipse', {
+      cx, cy,
+      rx: rand(5, 10), ry: rand(3, 6),
+      fill: pick(LEAF_GREENS),
+      transform: `rotate(${rand(0, 180).toFixed(0)} ${cx.toFixed(0)} ${cy.toFixed(0)})`,
+    }));
+  }
+}
+
+function buildVines() {
+  growVine(212, 872, 460, 12);  // tall ivy on the left corner
+  growVine(226, 872, 640, 8);   // second strand
+  growVine(628, 872, 590, 10);  // right corner
+  scatterLeaves(204, 330, 866, 16); // undergrowth along the base of the wall
+  scatterLeaves(500, 636, 866, 12);
+}
+
+/* --- cracks in the old abandoned walls --- */
+function buildCracks() {
+  const group = $('#cracks');
+  const addPath = (d, width = 2.2) => group.appendChild(svgEl('path', {
+    d, fill: 'none', stroke: '#10131b', 'stroke-width': width,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.85,
+  }));
+
+  // a jagged crack wandering downwards, with a small side branch
+  const crack = (x, y, len) => {
+    let d = `M${x} ${y}`;
+    let cx = x, cy = y;
+    const segs = Math.max(3, Math.round(len / 14));
+    const branchAt = 1 + randInt(segs - 1);
+    for (let i = 0; i < segs; i++) {
+      cx += rand(-7, 7);
+      cy += rand(10, 18);
+      d += ` L${cx.toFixed(1)} ${cy.toFixed(1)}`;
+      if (i === branchAt) {
+        const bx = cx + rand(9, 18) * (Math.random() < 0.5 ? -1 : 1);
+        const by = cy + rand(6, 14);
+        d += ` M${cx.toFixed(1)} ${cy.toFixed(1)} L${bx.toFixed(1)} ${by.toFixed(1)} M${cx.toFixed(1)} ${cy.toFixed(1)}`;
+      }
+    }
+    addPath(d);
+  };
+
+  // a short diagonal fracture, e.g. running off a window corner
+  const diag = (x, y, dx, dy) => {
+    let d = `M${x} ${y}`;
+    let cx = x, cy = y;
+    for (let i = 0; i < 3; i++) {
+      cx += dx / 3 + rand(-3, 3);
+      cy += dy / 3 + rand(-3, 3);
+      d += ` L${cx.toFixed(1)} ${cy.toFixed(1)}`;
+    }
+    addPath(d, 1.8);
+  };
+
+  // a patch of fallen plaster
+  const patch = (x, y) => {
+    const pts = [];
+    const n = 6;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const r = rand(10, 22);
+      pts.push(`${(x + Math.cos(a) * r * 1.3).toFixed(1)},${(y + Math.sin(a) * r).toFixed(1)}`);
+    }
+    group.appendChild(svgEl('polygon', { points: pts.join(' '), fill: '#171a23' }));
+  };
+
+  // long cracks in the clear strips between the window columns
+  crack(354, 282, 130);
+  crack(486, 288, 110);
+  crack(350, 560, 100);
+  crack(484, 590, 150);
+  crack(610, 430, 90);
+
+  // fractures running off window corners
+  diag(340, 398, 24, 14);
+  diag(500, 528, -26, 12);
+  diag(370, 658, -22, -14);
+  diag(600, 292, 20, 16);
+
+  // missing plaster
+  patch(356, 340);
+  patch(484, 742);
+  patch(608, 486);
+}
+
+/* --- grass tufts along the front --- */
+function buildGrass() {
+  const group = $('#grass');
+  for (let i = 0; i < 16; i++) {
+    const x = rand(10, 790);
+    const y = rand(876, 970);
+    const h = rand(8, 16);
+    const tuft = svgEl('path', {
+      d: `M${x} ${y} q 2 -${h} 4 0 q 2 -${h * 0.8} 4 0 q 2 -${h} 4 0`,
+      fill: 'none', stroke: '#10251a', 'stroke-width': 2.5, 'stroke-linecap': 'round',
+    });
+    group.appendChild(tuft);
+  }
+}
+
+/* --- the 12 tappable windows --- */
+function buildWindows() {
+  const group = $('#windows');
+  let idx = 0;
+  for (const y of WIN_ROWS) {
+    for (const x of WIN_COLS) {
+      const i = idx++;
+      const cx = x + WIN_W / 2;
+
+      const g = svgEl('g', { class: 'win' });
+      const frame = svgEl('rect', { x: x - 6, y: y - 6, width: WIN_W + 12, height: WIN_H + 12, rx: 4, fill: '#3a2b1e' });
+      const sill = svgEl('rect', { x: x - 10, y: y + WIN_H + 2, width: WIN_W + 20, height: 7, rx: 3, fill: '#241a10' });
+      const glass = svgEl('rect', { class: 'glass', x, y, width: WIN_W, height: WIN_H, fill: 'url(#glassDark)' });
+
+      const clip = svgEl('clipPath', { id: `winclip${i}` });
+      clip.appendChild(svgEl('rect', { x: x - 2, y: y - 2, width: WIN_W + 4, height: WIN_H + 4 }));
+
+      const charWrap = svgEl('g', { 'clip-path': `url(#winclip${i})` });
+      const charEl = svgEl('text', {
+        class: 'char', x: cx, y: y + WIN_H - 12,
+        'font-size': 64, 'text-anchor': 'middle',
+      });
+      charWrap.appendChild(charEl);
+
+      // mullions drawn over the character so it looks inside the window
+      const barV = svgEl('line', { x1: cx, y1: y, x2: cx, y2: y + WIN_H, stroke: '#3a2b1e', 'stroke-width': 4, 'pointer-events': 'none' });
+      const barH = svgEl('line', { x1: x, y1: y + WIN_H / 2, x2: x + WIN_W, y2: y + WIN_H / 2, stroke: '#3a2b1e', 'stroke-width': 4, 'pointer-events': 'none' });
+
+      const flash = svgEl('rect', { class: 'flash', x, y, width: WIN_W, height: WIN_H, fill: '#fffbe0', opacity: 0, 'pointer-events': 'none' });
+      const bolt = svgEl('text', { class: 'bolt', x: cx, y: y + WIN_H / 2 + 20, 'font-size': 58, 'text-anchor': 'middle' });
+      bolt.textContent = '⚡';
+
+      // generous invisible hit area (easy tapping on phones)
+      const hit = svgEl('rect', { x: x - 14, y: y - 14, width: WIN_W + 28, height: WIN_H + 28, fill: 'transparent' });
+
+      g.append(frame, sill, glass, clip, charWrap, barV, barH, flash, bolt, hit);
+      group.appendChild(g);
+      g.addEventListener('pointerdown', (e) => { e.preventDefault(); onWindowTap(i); });
+
+      windows.push({ g, charEl, cx, cy: y + WIN_H / 2 });
+    }
+  }
+}
+
+/* ============================== game state ============================== */
+
+let game = null;
+
+function startGame() {
+  stopTimers();
+  $('#pause-overlay').classList.remove('show');
+  game = {
+    score: 0,
+    lives: START_LIVES,
+    msLeft: DIFFICULTIES[settings.difficulty].seconds * 1000,
+    lastTick: performance.now(),
+    active: null,      // { index, good }
+    lastWindow: -1,
+    spawnTimer: null,
+    stayTimer: null,
+    tickInterval: setInterval(tick, 200),
+    paused: false,
+    over: false,
+  };
+  for (const w of windows) w.g.classList.remove('open', 'zap', 'oops');
+  updateHUD();
+  show('game');
+  scheduleSpawn(700);
+}
+
+function stopTimers() {
+  if (!game) return;
+  clearTimeout(game.spawnTimer);
+  clearTimeout(game.stayTimer);
+  clearInterval(game.tickInterval);
+}
+
+function applyScore(delta) {
+  game.score = Math.max(0, game.score + delta);
+}
+
+function scheduleSpawn(delay) {
+  if (!game || game.over || game.paused) return;
+  const d = DIFFICULTIES[settings.difficulty];
+  clearTimeout(game.spawnTimer);
+  game.spawnTimer = setTimeout(spawn, delay ?? rand(d.gapMin, d.gapMax));
+}
+
+function spawn() {
+  if (!game || game.over || game.paused) return;
+  let index;
+  do { index = randInt(windows.length); } while (index === game.lastWindow);
+  game.lastWindow = index;
+
+  const good = Math.random() < GOOD_CHANCE;
+  const w = windows[index];
+  w.charEl.textContent = good ? pick(GOOD_GUYS) : pick(BAD_GUYS);
+  w.g.classList.remove('zap', 'oops');
+  w.g.classList.add('open');
+  game.active = { index, good };
+  sound.pop();
+
+  game.stayTimer = setTimeout(() => {
+    // nobody tapped in time — the creature retreats
+    if (!game || game.over || game.paused) return;
+    const a = game.active;
+    game.active = null;
+    w.g.classList.remove('open');
+    if (a) {
+      if (a.good) {
+        applyScore(POINTS_SAVE_GOOD);
+        popupText(w.cx, w.cy, `+${POINTS_SAVE_GOOD}`, '#9fdc70');
+        sound.save();
+      } else {
+        applyScore(POINTS_MISS_BAD);
+        popupText(w.cx, w.cy, `${POINTS_MISS_BAD}`, '#ff9a4d');
+        sound.miss();
+      }
+      updateHUD();
+    }
+    scheduleSpawn();
+  }, DIFFICULTIES[settings.difficulty].stay);
+}
+
+function onWindowTap(index) {
+  if (!game || game.over || game.paused) return;
+  const a = game.active;
+  if (!a || a.index !== index) return;
+
+  game.active = null;
+  clearTimeout(game.stayTimer);
+  const w = windows[index];
+
+  if (!a.good) {
+    applyScore(POINTS_TAP_BAD);
+    sound.zap();
+    w.g.classList.add('zap');
+    popupText(w.cx, w.cy, `+${POINTS_TAP_BAD}`, '#ffd75e');
+    setTimeout(() => w.g.classList.remove('open', 'zap'), 380);
+  } else {
+    game.lives -= 1;
+    sound.hurt();
+    w.g.classList.add('oops');
+    popupText(w.cx, w.cy, '💔', '#ff6b57');
+    flashVignette();
+    setTimeout(() => w.g.classList.remove('open', 'oops'), 450);
+  }
+  updateHUD();
+
+  if (game.lives <= 0) {
+    game.over = true;
+    setTimeout(() => endGame('lives'), 700);
+  } else {
+    scheduleSpawn();
+  }
+}
+
+function tick() {
+  if (!game || game.over || game.paused) return;
+  const now = performance.now();
+  game.msLeft -= now - game.lastTick;
+  game.lastTick = now;
+  updateTimer();
+  if (game.msLeft <= 0) {
+    game.over = true;
+    endGame('time');
+  }
+}
+
+function updateTimer() {
+  const total = Math.max(0, Math.ceil(game.msLeft / 1000));
+  const m = Math.floor(total / 60);
+  const s = String(total % 60).padStart(2, '0');
+  const el = $('#hud-timer');
+  el.textContent = `${m}:${s}`;
+  el.classList.toggle('low', total <= 30 && total > 0);
+}
+
+/* keep the HUD aligned with the rendered scene rather than the full
+   (letterboxed) viewport, so on wide screens it hugs the house */
+function layoutHUD() {
+  const hud = $('#hud');
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / 800, vh / 1000); // scene viewBox is 800x1000, fit "meet"
+  const sideGap = Math.max(0, (vw - 800 * scale) / 2);
+  const topGap = Math.max(0, (vh - 1000 * scale) / 2);
+  hud.style.left = `${sideGap}px`;
+  hud.style.right = `${sideGap}px`;
+  hud.style.top = `${topGap}px`;
+}
+window.addEventListener('resize', layoutHUD);
+window.addEventListener('orientationchange', layoutHUD);
+
+function updateHUD() {
+  $('#hud-score').textContent = `Score: ${game.score}`;
+  const hearts = [];
+  for (let i = 0; i < START_LIVES; i++) {
+    hearts.push(`<span class="${i < game.lives ? '' : 'lost'}">❤️</span>`);
+  }
+  $('#hud-lives').innerHTML = hearts.join('');
+  updateTimer();
+}
+
+/* ---------- pause ---------- */
+
+function pauseGame() {
+  if (!game || game.over || game.paused) return;
+  game.paused = true;
+  clearTimeout(game.spawnTimer);
+  clearTimeout(game.stayTimer);
+  if (game.active != null) {
+    // the current creature retreats, no penalty or reward
+    windows[game.active.index].g.classList.remove('open');
+    game.active = null;
+  }
+  $('#pause-overlay').classList.add('show');
+}
+
+function resumeGame() {
+  if (!game || game.over || !game.paused) return;
+  game.paused = false;
+  game.lastTick = performance.now();
+  $('#pause-overlay').classList.remove('show');
+  scheduleSpawn(500);
+}
+
+/* pause whenever the player leaves the window / tab */
+window.addEventListener('blur', pauseGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+/* ---------- end of game ---------- */
+
+function endGame(reason) {
+  stopTimers();
+  $('#pause-overlay').classList.remove('show');
+  for (const w of windows) w.g.classList.remove('open', 'zap', 'oops');
+
+  const score = game.score;
+  const prevBest = getBoards()[settings.difficulty][0]?.score ?? 0;
+  const result = addScore(score);
+  const isNewBest = score > 0 && score > prevBest;
+  lastEntryKey = { diff: settings.difficulty, date: result.entry.date };
+
+  $('#go-title').textContent = reason === 'lives' ? '💀 OUT OF LIVES!' : "⏱️ TIME'S UP!";
+  $('#go-score').textContent = score;
+  $('#go-best').textContent = `Best (${DIFFICULTIES[settings.difficulty].label}): ${Math.max(prevBest, score)}`;
+  $('#go-new').classList.toggle('show', isNewBest);
+
+  // first time on the leaderboard with no name set? ask for one
+  const askName = result.rank >= 0 && score > 0 && !settings.playerName;
+  $('#go-namerow').classList.toggle('show', askName);
+  if (askName) $('#go-name').value = '';
+
+  if (isNewBest) sound.fanfare(); else sound.over();
+
+  game = null;
+  show('gameover');
+}
+
+function quitGame() {
+  stopTimers();
+  $('#pause-overlay').classList.remove('show');
+  for (const w of windows) w.g.classList.remove('open', 'zap', 'oops');
+  game = null;
+  show('menu');
+}
+
+/* ============================== effects ============================== */
+
+function popupText(x, y, text, color) {
+  const t = svgEl('text', {
+    class: 'popup', x, y, 'text-anchor': 'middle',
+    fill: color, stroke: '#1a1405', 'stroke-width': 1.5, 'paint-order': 'stroke',
+  });
+  t.textContent = text;
+  $('#fx').appendChild(t);
+  setTimeout(() => t.remove(), 850);
+}
+
+function flashVignette() {
+  const v = $('#vignette');
+  v.classList.add('hit');
+  setTimeout(() => v.classList.remove('hit'), 120);
+}
+
+/* ============================== wiring ============================== */
+
+document.querySelectorAll('[data-nav]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    sound.click();
+    const target = btn.dataset.nav;
+    if (target === 'game') startGame();
+    else show(target);
+  });
+});
+
+$('#btn-again').addEventListener('click', () => { sound.click(); startGame(); });
+$('#btn-pause').addEventListener('click', () => { sound.click(); pauseGame(); });
+$('#btn-resume').addEventListener('click', () => { sound.click(); resumeGame(); });
+$('#btn-quit-menu').addEventListener('click', () => { sound.click(); quitGame(); });
+
+$('#btn-sound').addEventListener('click', () => {
+  settings.sound = !settings.sound;
+  saveSettings();
+  refreshSettingsUI();
+  sound.click();
+});
+
+$('#btn-difficulty').addEventListener('click', () => {
+  const next = DIFF_ORDER[(DIFF_ORDER.indexOf(settings.difficulty) + 1) % DIFF_ORDER.length];
+  settings.difficulty = next;
+  saveSettings();
+  refreshSettingsUI();
+  sound.click();
+});
+
+$('#inp-name').addEventListener('change', (e) => {
+  settings.playerName = e.target.value.trim();
+  saveSettings();
+});
+
+$('#btn-savename').addEventListener('click', () => {
+  const name = $('#go-name').value.trim();
+  if (!name) { $('#go-name').focus(); return; }
+  commitPlayerName(name);
+  $('#go-namerow').classList.remove('show');
+  sound.click();
+});
+$('#go-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#btn-savename').click();
+});
+
+document.querySelectorAll('.hs-tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    scoreTab = tab.dataset.board;
+    renderScores();
+    sound.click();
+  });
+});
+
+$('#btn-clear-scores').addEventListener('click', () => {
+  const boards = getBoards();
+  boards[scoreTab] = [];
+  saveBoards(boards);
+  renderScores();
+  sound.click();
+});
+
+/* ============================== boot ============================== */
+
+buildMenuStars();
+buildSkyStars();
+buildBats();
+buildShrubsBack();
+buildBushes();
+buildCracks();
+buildVines();
+buildGrass();
+buildWindows();
+refreshSettingsUI();
+layoutHUD();
+show('menu');

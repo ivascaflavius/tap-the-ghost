@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Tap the Ghost</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👻</text></svg>">
+</head>
+<body>
+<div id="stars"></div>
+
+<div id="app">
+
+  <!-- ============ MAIN MENU ============ -->
+  <section class="screen active" id="screen-menu">
+    <div class="panel">
+      <div class="hero">
+        <svg viewBox="0 0 200 150" class="hero-ghost" aria-hidden="true">
+          <defs>
+            <radialGradient id="ghostBody" cx="40%" cy="30%" r="80%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="70%" stop-color="#e8e8ee"/>
+              <stop offset="100%" stop-color="#b9b9c9"/>
+            </radialGradient>
+          </defs>
+          <path d="M100 15 C 55 15 40 55 40 90 L 40 128
+                   Q 47 118 55 128 Q 63 138 71 128 Q 79 118 87 128
+                   Q 95 138 103 128 Q 111 118 119 128 Q 127 138 135 128
+                   Q 143 118 160 128 L 160 90 C 160 55 145 15 100 15 Z"
+                fill="url(#ghostBody)"/>
+          <ellipse cx="78" cy="70" rx="14" ry="18" fill="#16161d"/>
+          <ellipse cx="124" cy="70" rx="14" ry="18" fill="#16161d"/>
+          <ellipse cx="74" cy="63" rx="4" ry="5" fill="#4a4a5a"/>
+          <ellipse cx="120" cy="63" rx="4" ry="5" fill="#4a4a5a"/>
+        </svg>
+      </div>
+      <h1 class="title">TAP THE GHOST</h1>
+      <p class="menu-info">Player: <b id="menu-player">unnamed</b></p>
+      <p class="menu-info" id="menu-best"></p>
+      <nav class="menu">
+        <button class="menu-btn" data-nav="game"><span class="ico">😃</span> START A NEW GAME</button>
+        <button class="menu-btn" data-nav="howto"><span class="ico">❓</span> HOW TO PLAY</button>
+        <button class="menu-btn" data-nav="scores"><span class="ico">🏆</span> HIGHSCORES</button>
+        <button class="menu-btn" data-nav="settings"><span class="ico">⚙️</span> SETTINGS</button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO PLAY ============ -->
+  <section class="screen" id="screen-howto">
+    <div class="panel">
+      <h2 class="subtitle">👻 HOW TO PLAY</h2>
+      <div class="text-box">
+        <p>The goal of this game is to score as many points as possible before the timer runs out — or before you lose all your lives!</p>
+        <p>Creatures appear in the windows of the haunted manor, one at a time. <strong>Tap the BAD guys</strong> to earn <strong>+3 points</strong>:</p>
+        <p class="char-row">👻 🧛 🐺 🎃 💀 😈 🧟 🧙</p>
+        <p>But watch out — <strong>GOOD guys</strong> live there too. Tap one of them and you <strong>lose a life 💔</strong>. Let a good guy leave safely and you earn <strong>+1 point</strong>:</p>
+        <p class="char-row">🐶 🐱 🐼 🐰 🦉 🐥</p>
+        <p>Careful though — if a bad guy escapes untapped, you <strong>lose 1 point</strong>!</p>
+        <p>You start with <strong>3 lives ❤️</strong> and a <strong>set timer ⏱️</strong> that depends on the difficulty. On higher difficulties creatures appear faster and wait less for you — but the timer is longer, so bigger scores are possible!</p>
+      </div>
+      <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
+    </div>
+  </section>
+
+  <!-- ============ HIGHSCORES ============ -->
+  <section class="screen" id="screen-scores">
+    <div class="panel">
+      <h2 class="subtitle">🏆 HIGHSCORES</h2>
+      <div class="hs-tabs">
+        <button class="hs-tab" data-board="easy">EASY</button>
+        <button class="hs-tab" data-board="medium">MEDIUM</button>
+        <button class="hs-tab" data-board="hard">HARD</button>
+      </div>
+      <div class="text-box">
+        <ol id="hs-list" class="hs-list"></ol>
+        <p id="hs-empty" class="hs-empty">No scores yet — go tap some ghosts!</p>
+      </div>
+      <button class="menu-btn danger small" id="btn-clear-scores"><span class="ico">🗑️</span> CLEAR THIS BOARD</button>
+      <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="screen" id="screen-settings">
+    <div class="panel">
+      <h2 class="subtitle">👻 SETTINGS</h2>
+      <div class="menu-btn setting no-press">
+        <span><span class="ico">🙍</span> PLAYER</span>
+        <input id="inp-name" class="name-input" maxlength="16" placeholder="unnamed" autocomplete="off">
+      </div>
+      <button class="menu-btn setting" id="btn-sound">
+        <span><span class="ico">🔊</span> SOUND</span><span class="value" id="val-sound">ON</span>
+      </button>
+      <button class="menu-btn setting" id="btn-difficulty">
+        <span><span class="ico">⭐</span> DIFFICULTY</span><span class="value" id="val-difficulty">EASY</span>
+      </button>
+      <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section class="screen" id="screen-game">
+    <svg id="scene" viewBox="0 0 800 1000" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#04050d"/>
+          <stop offset="60%" stop-color="#0a1022"/>
+          <stop offset="100%" stop-color="#13203a"/>
+        </linearGradient>
+        <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fdf6d8" stop-opacity="0.55"/>
+          <stop offset="55%" stop-color="#fdf6d8" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#fdf6d8" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="moonBody" cx="42%" cy="38%" r="70%">
+          <stop offset="0%" stop-color="#fffbe8"/>
+          <stop offset="80%" stop-color="#e8dfb8"/>
+          <stop offset="100%" stop-color="#cfc394"/>
+        </radialGradient>
+        <linearGradient id="wallGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#232733"/>
+          <stop offset="50%" stop-color="#2e3342"/>
+          <stop offset="100%" stop-color="#1d212b"/>
+        </linearGradient>
+        <linearGradient id="roofGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#241419"/>
+          <stop offset="100%" stop-color="#150c10"/>
+        </linearGradient>
+        <linearGradient id="glassDark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#141c2b"/>
+          <stop offset="50%" stop-color="#0c1220"/>
+          <stop offset="100%" stop-color="#182238"/>
+        </linearGradient>
+        <linearGradient id="glassLit" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffe9a8"/>
+          <stop offset="100%" stop-color="#f4b942"/>
+        </linearGradient>
+        <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0e1a14"/>
+          <stop offset="100%" stop-color="#060d09"/>
+        </linearGradient>
+        <pattern id="siding" width="800" height="26" patternUnits="userSpaceOnUse">
+          <rect width="800" height="26" fill="none"/>
+          <line x1="0" y1="25" x2="800" y2="25" stroke="#000000" stroke-opacity="0.18" stroke-width="2"/>
+        </pattern>
+        <pattern id="shingles" width="40" height="16" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="15" x2="40" y2="15" stroke="#000" stroke-opacity="0.3" stroke-width="2"/>
+          <line x1="20" y1="8" x2="20" y2="15" stroke="#000" stroke-opacity="0.2" stroke-width="2"/>
+        </pattern>
+      </defs>
+
+      <!-- sky -->
+      <rect x="0" y="0" width="800" height="1000" fill="url(#skyGrad)"/>
+      <g id="skyStars"></g>
+
+      <!-- moon -->
+      <g id="moon">
+        <circle cx="130" cy="115" r="115" fill="url(#moonGlow)"/>
+        <circle cx="130" cy="115" r="52" fill="url(#moonBody)"/>
+        <circle cx="112" cy="100" r="9" fill="#d4c896" opacity="0.7"/>
+        <circle cx="146" cy="128" r="6" fill="#d4c896" opacity="0.6"/>
+        <circle cx="132" cy="88" r="4" fill="#d4c896" opacity="0.5"/>
+        <circle cx="150" cy="102" r="5" fill="#d4c896" opacity="0.45"/>
+      </g>
+
+      <!-- distant hills -->
+      <path d="M0 880 Q 100 840 200 868 Q 320 892 420 862 Q 540 838 650 870 Q 730 888 800 866 L 800 1000 L 0 1000 Z" fill="#0a140e"/>
+
+      <!-- tall dark background shrubs (JS) -->
+      <g id="shrubsBack"></g>
+
+      <!-- spooky trees -->
+      <g id="trees" fill="#05080a" stroke="#05080a">
+        <g class="tree">
+          <path d="M85 880 L 92 720 L 60 640 L 70 636 L 96 700 L 100 590 L 78 520 L 88 516 L 104 580 L 112 500 L 122 502 L 112 596 L 142 540 L 150 546 L 116 616 L 112 700 L 148 650 L 156 658 L 112 730 L 108 880 Z" stroke-width="3" stroke-linejoin="round"/>
+          <!-- silhouette foliage -->
+          <g fill="#070d10" stroke="none">
+            <ellipse cx="78" cy="545" rx="48" ry="34"/>
+            <ellipse cx="118" cy="502" rx="44" ry="32"/>
+            <ellipse cx="148" cy="568" rx="38" ry="28"/>
+            <ellipse cx="96" cy="608" rx="42" ry="27"/>
+            <ellipse cx="60" cy="640" rx="30" ry="22"/>
+          </g>
+        </g>
+        <g class="tree">
+          <path d="M705 880 L 710 740 L 680 670 L 690 666 L 714 726 L 716 620 L 700 560 L 710 556 L 722 616 L 732 545 L 742 548 L 730 630 L 758 580 L 766 586 L 734 646 L 730 730 L 762 690 L 770 698 L 730 752 L 726 880 Z" stroke-width="3" stroke-linejoin="round"/>
+          <!-- silhouette foliage -->
+          <g fill="#070d10" stroke="none">
+            <ellipse cx="700" cy="608" rx="42" ry="30"/>
+            <ellipse cx="736" cy="562" rx="44" ry="32"/>
+            <ellipse cx="762" cy="638" rx="34" ry="26"/>
+            <ellipse cx="716" cy="668" rx="38" ry="25"/>
+            <ellipse cx="682" cy="686" rx="28" ry="20"/>
+          </g>
+        </g>
+      </g>
+
+      <!-- haunted manor -->
+      <g id="house">
+        <!-- chimney -->
+        <rect x="540" y="148" width="46" height="110" fill="#3d1f1a"/>
+        <rect x="534" y="140" width="58" height="14" fill="#2c1512"/>
+        <line x1="540" y1="180" x2="586" y2="180" stroke="#000" stroke-opacity="0.3" stroke-width="2"/>
+        <line x1="540" y1="205" x2="586" y2="205" stroke="#000" stroke-opacity="0.3" stroke-width="2"/>
+        <line x1="563" y1="154" x2="563" y2="180" stroke="#000" stroke-opacity="0.25" stroke-width="2"/>
+        <!-- smoke -->
+        <g id="smoke" fill="#9aa" opacity="0.14">
+          <circle class="puff p1" cx="563" cy="120" r="10"/>
+          <circle class="puff p2" cx="572" cy="95" r="13"/>
+          <circle class="puff p3" cx="560" cy="66" r="16"/>
+        </g>
+        <!-- roof -->
+        <polygon points="172,276 420,112 668,276" fill="url(#roofGrad)"/>
+        <polygon points="172,276 420,112 668,276" fill="url(#shingles)"/>
+        <polygon points="172,276 420,112 668,276" fill="none" stroke="#0b0608" stroke-width="6" stroke-linejoin="round"/>
+        <!-- attic round window -->
+        <circle cx="420" cy="212" r="24" fill="#0c1220" stroke="#3a2b1e" stroke-width="6"/>
+        <line x1="420" y1="190" x2="420" y2="234" stroke="#3a2b1e" stroke-width="4"/>
+        <line x1="398" y1="212" x2="442" y2="212" stroke="#3a2b1e" stroke-width="4"/>
+        <!-- facade -->
+        <rect x="200" y="272" width="440" height="600" fill="url(#wallGrad)"/>
+        <rect x="200" y="272" width="440" height="600" fill="url(#siding)"/>
+        <rect x="200" y="272" width="440" height="600" fill="none" stroke="#12151d" stroke-width="5"/>
+        <!-- eave -->
+        <rect x="186" y="264" width="468" height="16" rx="4" fill="#171019"/>
+        <!-- floor divider trims -->
+        <rect x="200" y="418" width="440" height="6" fill="#191d26"/>
+        <rect x="200" y="548" width="440" height="6" fill="#191d26"/>
+        <rect x="200" y="678" width="440" height="6" fill="#191d26"/>
+        <!-- door -->
+        <path d="M382 872 L 382 806 Q 382 776 425 776 Q 468 776 468 806 L 468 872 Z" fill="#120b13"/>
+        <path d="M388 872 L 388 808 Q 388 784 425 784 Q 462 784 462 808 L 462 872 Z" fill="#3a2416"/>
+        <line x1="425" y1="784" x2="425" y2="872" stroke="#241609" stroke-width="3"/>
+        <circle cx="416" cy="830" r="4" fill="#c9a227"/>
+        <!-- steps -->
+        <rect x="374" y="872" width="102" height="10" rx="3" fill="#1a1e28"/>
+        <!-- lantern by the door -->
+        <rect x="352" y="792" width="3" height="14" fill="#555"/>
+        <rect x="347" y="806" width="13" height="18" rx="3" fill="#221a08" stroke="#555" stroke-width="2"/>
+        <circle class="lantern" cx="353.5" cy="815" r="4" fill="#ffce54"/>
+      </g>
+
+      <!-- cracks in the old walls (JS) -->
+      <g id="cracks"></g>
+
+      <!-- ivy / vines creeping up the walls (JS) -->
+      <g id="vines"></g>
+
+      <!-- windows injected by JS -->
+      <g id="windows"></g>
+
+      <!-- foreground ground -->
+      <rect x="0" y="872" width="800" height="128" fill="url(#groundGrad)"/>
+      <path d="M0 872 Q 120 862 240 872 Q 400 884 560 870 Q 690 860 800 872 L 800 886 L 0 886 Z" fill="#0e1a14"/>
+
+      <!-- stone path from the front door -->
+      <g id="stonePath">
+        <polygon points="400,882 450,882 482,1000 368,1000" fill="#171e28"/>
+        <ellipse cx="424" cy="900" rx="16" ry="6" fill="#232d3a"/>
+        <ellipse cx="418" cy="922" rx="18" ry="7" fill="#202a36"/>
+        <ellipse cx="432" cy="948" rx="20" ry="8" fill="#232d3a"/>
+        <ellipse cx="420" cy="978" rx="23" ry="9" fill="#1e2833"/>
+      </g>
+
+      <!-- bushes & shrubs with glowing eyes (JS) -->
+      <g id="bushes"></g>
+
+      <!-- grass tufts (JS) -->
+      <g id="grass"></g>
+
+      <!-- bats flying around the house (JS) -->
+      <g id="flyingBats"></g>
+
+      <!-- fx layer (score popups) -->
+      <g id="fx"></g>
+    </svg>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-lives" aria-label="Lives"></div>
+      <div id="hud-timer">3:00</div>
+      <div id="hud-right">
+        <div id="hud-score">Score: 0</div>
+        <button id="btn-pause" title="Pause game" aria-label="Pause game">❚❚</button>
+      </div>
+    </div>
+    <div id="vignette"></div>
+
+    <!-- pause menu -->
+    <div id="pause-overlay">
+      <div class="panel pause-panel">
+        <h2 class="subtitle">⏸️ PAUSED</h2>
+        <button class="menu-btn" id="btn-resume"><span class="ico">▶️</span> RESUME</button>
+        <button class="menu-btn back" id="btn-quit-menu"><span class="ico">⬅️</span> QUIT TO MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME OVER ============ -->
+  <section class="screen" id="screen-gameover">
+    <div class="panel">
+      <h2 class="subtitle" id="go-title">⏱️ TIME'S UP!</h2>
+      <div class="text-box center">
+        <p class="go-score">SCORE: <span id="go-score">0</span></p>
+        <p class="go-best" id="go-best">Best: 0</p>
+        <p class="go-new" id="go-new">🎉 NEW HIGHSCORE! 🎉</p>
+        <div id="go-namerow">
+          <p>Enter your name for the leaderboard:</p>
+          <div class="name-line">
+            <input id="go-name" class="name-input" maxlength="16" placeholder="unnamed" autocomplete="off">
+            <button id="btn-savename" class="menu-btn small">SAVE</button>
+          </div>
+        </div>
+      </div>
+      <button class="menu-btn" id="btn-again"><span class="ico">🔄</span> PLAY AGAIN</button>
+      <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
+    </div>
+  </section>
+
+</div>
+<script src="game.js"></script>
+</body>
+</html>
