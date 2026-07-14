@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Tap the Ghost</title>
 <link rel="stylesheet" href="style.css">
@@ -11,6 +11,228 @@
 <body>
 <div id="stars"></div>
 
+<!-- ============ CHARACTER SPRITE SHEET (referenced document-wide) ============ -->
+<svg id="spritesheet" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="gGhost" cx="40%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#e8e8ee"/>
+      <stop offset="100%" stop-color="#b9b9c9"/>
+    </radialGradient>
+    <radialGradient id="gGold" cx="40%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fff6c0"/>
+      <stop offset="60%" stop-color="#f4b942"/>
+      <stop offset="100%" stop-color="#c9871a"/>
+    </radialGradient>
+    <radialGradient id="gPump" cx="42%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#f8a03c"/>
+      <stop offset="100%" stop-color="#c05a10"/>
+    </radialGradient>
+    <radialGradient id="gHeart" cx="38%" cy="32%" r="80%">
+      <stop offset="0%" stop-color="#ff8a9a"/>
+      <stop offset="100%" stop-color="#d81f3c"/>
+    </radialGradient>
+    <radialGradient id="gBomb" cx="35%" cy="30%" r="85%">
+      <stop offset="0%" stop-color="#5c6270"/>
+      <stop offset="100%" stop-color="#16181c"/>
+    </radialGradient>
+
+    <!-- ===== BAD GUYS ===== -->
+    <symbol id="ch-ghost" viewBox="0 0 80 80">
+      <path d="M40 6 C 20 6 14 24 14 38 L 14 70 Q 18 64 23 70 Q 28 76 33 70 Q 37 65 40 70 Q 44 76 49 70 Q 53 65 57 70 Q 62 76 66 70 L 66 38 C 66 24 60 6 40 6 Z" fill="url(#gGhost)"/>
+      <ellipse cx="31" cy="34" rx="6.5" ry="9" fill="#16161d"/>
+      <ellipse cx="49" cy="34" rx="6.5" ry="9" fill="#16161d"/>
+      <ellipse cx="29" cy="31" rx="2" ry="2.6" fill="#4a4a5a"/>
+      <ellipse cx="47" cy="31" rx="2" ry="2.6" fill="#4a4a5a"/>
+      <ellipse cx="40" cy="52" rx="5" ry="7" fill="#2a2a35"/>
+    </symbol>
+
+    <symbol id="ch-vampire" viewBox="0 0 80 80">
+      <path d="M12 70 L 20 42 L 40 54 L 60 42 L 68 70 Z" fill="#1a1024"/>
+      <path d="M14 68 L 21 46 L 40 57 L 59 46 L 66 68 Z" fill="#48204a"/>
+      <ellipse cx="40" cy="36" rx="20" ry="22" fill="#e8e3f2"/>
+      <path d="M20 30 Q 30 20 40 33 Q 50 20 60 30 Q 59 14 40 13 Q 21 14 20 30 Z" fill="#16101e"/>
+      <ellipse cx="32" cy="37" rx="4.5" ry="5" fill="#fff"/>
+      <ellipse cx="48" cy="37" rx="4.5" ry="5" fill="#fff"/>
+      <circle cx="32" cy="38" r="2.4" fill="#c01820"/>
+      <circle cx="48" cy="38" r="2.4" fill="#c01820"/>
+      <path d="M26 30 L 37 33" stroke="#16101e" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M54 30 L 43 33" stroke="#16101e" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M31 48 Q 40 53 49 48" stroke="#5a1a1e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M33 49 L 35 56 L 37.5 49.5 Z" fill="#fff"/>
+      <path d="M42.5 49.5 L 45 56 L 47 49 Z" fill="#fff"/>
+    </symbol>
+
+    <symbol id="ch-werewolf" viewBox="0 0 80 80">
+      <path d="M18 24 L 14 4 L 32 14 Z" fill="#5a4632"/>
+      <path d="M62 24 L 66 4 L 48 14 Z" fill="#5a4632"/>
+      <path d="M19 18 L 17 8 L 27 13 Z" fill="#2e2318"/>
+      <path d="M61 18 L 63 8 L 53 13 Z" fill="#2e2318"/>
+      <path d="M40 8 C 24 8 14 20 14 34 C 14 40 16 46 20 50 L 15 55 L 24 54 C 28 60 34 63 40 63 C 46 63 52 60 56 54 L 65 55 L 60 50 C 64 46 66 40 66 34 C 66 20 56 8 40 8 Z" fill="#6b5138"/>
+      <ellipse cx="40" cy="52" rx="13" ry="11" fill="#c9b491"/>
+      <ellipse cx="40" cy="46" rx="6" ry="4.5" fill="#221812"/>
+      <ellipse cx="29" cy="34" rx="5" ry="6" fill="#ffd75e"/>
+      <ellipse cx="51" cy="34" rx="5" ry="6" fill="#ffd75e"/>
+      <circle cx="29" cy="35" r="2.2" fill="#111"/>
+      <circle cx="51" cy="35" r="2.2" fill="#111"/>
+      <path d="M23 27 L 34 31" stroke="#2e2318" stroke-width="3" stroke-linecap="round"/>
+      <path d="M57 27 L 46 31" stroke="#2e2318" stroke-width="3" stroke-linecap="round"/>
+      <path d="M33 57 L 35 63 L 37 57.5 Z" fill="#fff"/>
+      <path d="M43 57.5 L 45 63 L 47 57 Z" fill="#fff"/>
+    </symbol>
+
+    <symbol id="ch-pumpkin" viewBox="0 0 80 80">
+      <path d="M38 16 Q 35 6 43 4 Q 47 9 44 16 Z" fill="#3f6b23"/>
+      <ellipse cx="40" cy="44" rx="27" ry="24" fill="url(#gPump)"/>
+      <ellipse cx="23" cy="44" rx="10" ry="22" fill="#d06a14" opacity="0.65"/>
+      <ellipse cx="57" cy="44" rx="10" ry="22" fill="#d06a14" opacity="0.65"/>
+      <path d="M21 36 L 34 42 L 21 44 Z" fill="#ffdf6b"/>
+      <path d="M59 36 L 46 42 L 59 44 Z" fill="#ffdf6b"/>
+      <path d="M22 51 Q 40 64 58 51 Q 53 58 48 54 L 44 60 L 40 54 L 36 60 L 32 54 Q 27 58 22 51 Z" fill="#ffdf6b"/>
+    </symbol>
+
+    <symbol id="ch-zombie" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="42" rx="22" ry="24" fill="#7da05a"/>
+      <path d="M18 30 Q 18 14 40 14 Q 62 14 62 30 L 62 26 L 18 26 Z" fill="#3e5a2c"/>
+      <path d="M18 30 L 62 30 L 62 24 Q 40 16 18 24 Z" fill="#3e5a2c"/>
+      <path d="M46 20 L 58 24" stroke="#26361a" stroke-width="2" stroke-linecap="round"/>
+      <path d="M49 18 L 48 24 M 53 19 L 52 25" stroke="#26361a" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="31" cy="38" r="7" fill="#e8ecd8"/>
+      <circle cx="32" cy="39" r="2.6" fill="#1c2412"/>
+      <path d="M45 35 L 55 37" stroke="#26361a" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="50" cy="41" r="2" fill="#1c2412"/>
+      <path d="M30 54 Q 40 58 50 52" stroke="#26361a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M34 52 L 35 58 M 40 53.5 L 41 59 M 46 51 L 47 56.5" stroke="#26361a" stroke-width="1.6" stroke-linecap="round"/>
+      <rect x="11" y="38" width="8" height="5" rx="2" fill="#8a8f98"/>
+    </symbol>
+
+    <symbol id="ch-witch" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="48" rx="18" ry="17" fill="#8fae52"/>
+      <path d="M22 42 Q 15 54 19 66 L 28 57 Q 24 49 26 42 Z" fill="#2e1a3e"/>
+      <path d="M58 42 Q 65 54 61 66 L 52 57 Q 56 49 54 42 Z" fill="#2e1a3e"/>
+      <path d="M12 36 Q 40 44 68 36 L 52 31 L 47 6 L 33 10 L 29 31 Z" fill="#1c1226"/>
+      <rect x="30" y="25" width="19" height="7" rx="2" fill="#5a2a78" transform="rotate(-4 39 28)"/>
+      <ellipse cx="33" cy="45" rx="4" ry="4.5" fill="#ffd75e"/>
+      <ellipse cx="47" cy="45" rx="4" ry="4.5" fill="#ffd75e"/>
+      <circle cx="33" cy="46" r="1.8" fill="#111"/>
+      <circle cx="47" cy="46" r="1.8" fill="#111"/>
+      <path d="M40 45 Q 46 51 40 55 Q 36.5 53 38 49.5 Z" fill="#7a9a42"/>
+      <path d="M32 58 Q 40 63 48 57" stroke="#2c3a12" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="49" cy="53" r="1.8" fill="#5c7a34"/>
+    </symbol>
+
+    <!-- ===== GOOD GUYS (bright, big-eyed, smiling) ===== -->
+    <symbol id="ch-dog" viewBox="0 0 80 80">
+      <path d="M18 24 Q 6 34 12 54 Q 22 56 26 42 Q 28 30 24 22 Z" fill="#a06a2c"/>
+      <path d="M62 24 Q 74 34 68 54 Q 58 56 54 42 Q 52 30 56 22 Z" fill="#a06a2c"/>
+      <ellipse cx="40" cy="42" rx="23" ry="22" fill="#e8b45e"/>
+      <ellipse cx="40" cy="53" rx="14" ry="11" fill="#f8e3bc"/>
+      <circle cx="30" cy="36" r="6" fill="#fff"/>
+      <circle cx="50" cy="36" r="6" fill="#fff"/>
+      <circle cx="31" cy="37" r="3" fill="#3a2812"/>
+      <circle cx="49" cy="37" r="3" fill="#3a2812"/>
+      <circle cx="32" cy="35.5" r="1.1" fill="#fff"/>
+      <circle cx="50" cy="35.5" r="1.1" fill="#fff"/>
+      <path d="M25 28 Q 30 26 34 28" stroke="#a06a2c" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M46 28 Q 50 26 55 28" stroke="#a06a2c" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="40" cy="48" rx="5" ry="4" fill="#2c1e10"/>
+      <path d="M31 54 Q 40 62 49 54" stroke="#2c1e10" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M36 57.5 Q 40 65 44 57.5 Z" fill="#e06a7a"/>
+    </symbol>
+
+    <symbol id="ch-cat" viewBox="0 0 80 80">
+      <path d="M19 30 L 14 8 L 34 19 Z" fill="#f0f0f5"/>
+      <path d="M61 30 L 66 8 L 46 19 Z" fill="#f0f0f5"/>
+      <path d="M21 23 L 18 11 L 29 17 Z" fill="#f0a8bc"/>
+      <path d="M59 23 L 62 11 L 51 17 Z" fill="#f0a8bc"/>
+      <ellipse cx="40" cy="43" rx="23" ry="21" fill="#f0f0f5"/>
+      <path d="M30 24 Q 40 20 50 24 Q 46 32 40 32 Q 34 32 30 24 Z" fill="#d8dce6"/>
+      <circle cx="30" cy="40" r="6" fill="#fff"/>
+      <circle cx="50" cy="40" r="6" fill="#fff"/>
+      <circle cx="30.5" cy="41" r="3" fill="#3a9a4a"/>
+      <circle cx="49.5" cy="41" r="3" fill="#3a9a4a"/>
+      <circle cx="30.5" cy="41" r="1.4" fill="#111"/>
+      <circle cx="49.5" cy="41" r="1.4" fill="#111"/>
+      <circle cx="31.5" cy="39.5" r="1" fill="#fff"/>
+      <circle cx="50.5" cy="39.5" r="1" fill="#fff"/>
+      <path d="M37.5 49 L 42.5 49 L 40 52.5 Z" fill="#f0a8bc"/>
+      <path d="M40 52.5 Q 36 57 31.5 54.5 M 40 52.5 Q 44 57 48.5 54.5" stroke="#5a6478" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M13 46 L 25 47 M 14 52 L 26 51 M 67 46 L 55 47 M 66 52 L 54 51" stroke="#c8ccd8" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="22" cy="49" r="3.5" fill="#f0a8bc" opacity="0.5"/>
+      <circle cx="58" cy="49" r="3.5" fill="#f0a8bc" opacity="0.5"/>
+    </symbol>
+
+    <symbol id="ch-rabbit" viewBox="0 0 80 80">
+      <ellipse cx="30" cy="19" rx="7" ry="17" fill="#e8e8ee"/>
+      <ellipse cx="50" cy="19" rx="7" ry="17" fill="#e8e8ee"/>
+      <ellipse cx="30" cy="20" rx="3.5" ry="12" fill="#e8a0b4"/>
+      <ellipse cx="50" cy="20" rx="3.5" ry="12" fill="#e8a0b4"/>
+      <ellipse cx="40" cy="48" rx="21" ry="19" fill="#e8e8ee"/>
+      <circle cx="31" cy="44" r="4.5" fill="#2c2c38"/>
+      <circle cx="49" cy="44" r="4.5" fill="#2c2c38"/>
+      <circle cx="30" cy="42.5" r="1.5" fill="#fff"/>
+      <circle cx="48" cy="42.5" r="1.5" fill="#fff"/>
+      <circle cx="24" cy="52" r="4" fill="#e8a0b4" opacity="0.6"/>
+      <circle cx="56" cy="52" r="4" fill="#e8a0b4" opacity="0.6"/>
+      <path d="M37 51 L 43 51 L 40 55 Z" fill="#e8a0b4"/>
+      <rect x="35.5" y="56" width="4.2" height="7" rx="1.5" fill="#fff"/>
+      <rect x="40.3" y="56" width="4.2" height="7" rx="1.5" fill="#fff"/>
+    </symbol>
+
+    <symbol id="ch-panda" viewBox="0 0 80 80">
+      <circle cx="20" cy="16" r="10" fill="#1e1e26"/>
+      <circle cx="60" cy="16" r="10" fill="#1e1e26"/>
+      <ellipse cx="40" cy="42" rx="26" ry="24" fill="#f4f4f8"/>
+      <ellipse cx="29" cy="38" rx="9" ry="11" fill="#1e1e26" transform="rotate(-15 29 38)"/>
+      <ellipse cx="51" cy="38" rx="9" ry="11" fill="#1e1e26" transform="rotate(15 51 38)"/>
+      <circle cx="30" cy="37" r="3.6" fill="#fff"/>
+      <circle cx="50" cy="37" r="3.6" fill="#fff"/>
+      <circle cx="30.5" cy="37.5" r="1.8" fill="#111"/>
+      <circle cx="49.5" cy="37.5" r="1.8" fill="#111"/>
+      <ellipse cx="40" cy="50" rx="4.5" ry="3.5" fill="#1e1e26"/>
+      <path d="M40 53 Q 40 58 34 58 M 40 53 Q 40 58 46 58" stroke="#1e1e26" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="20" cy="48" r="4" fill="#e8a0b4" opacity="0.55"/>
+      <circle cx="60" cy="48" r="4" fill="#e8a0b4" opacity="0.55"/>
+    </symbol>
+
+    <!-- ===== SPECIALS ===== -->
+    <symbol id="ch-golden" viewBox="0 0 80 80">
+      <path d="M40 6 C 20 6 14 24 14 38 L 14 70 Q 18 64 23 70 Q 28 76 33 70 Q 37 65 40 70 Q 44 76 49 70 Q 53 65 57 70 Q 62 76 66 70 L 66 38 C 66 24 60 6 40 6 Z" fill="url(#gGold)"/>
+      <ellipse cx="31" cy="34" rx="6.5" ry="9" fill="#4a3505"/>
+      <ellipse cx="49" cy="34" rx="6.5" ry="9" fill="#4a3505"/>
+      <ellipse cx="29" cy="31" rx="2" ry="2.6" fill="#8a6a1a"/>
+      <ellipse cx="47" cy="31" rx="2" ry="2.6" fill="#8a6a1a"/>
+      <ellipse cx="40" cy="52" rx="5" ry="7" fill="#6b5312"/>
+      <path d="M60 10 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" fill="#fff8d0"/>
+      <path d="M17 18 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5 Z" fill="#fff8d0"/>
+    </symbol>
+
+    <symbol id="ch-fairy" viewBox="0 0 80 80">
+      <path d="M29 34 Q 8 16 10 36 Q 11 49 29 44 Z" fill="#dff2ff" opacity="0.92"/>
+      <path d="M51 34 Q 72 16 70 36 Q 69 49 51 44 Z" fill="#dff2ff" opacity="0.92"/>
+      <path d="M40 64 C 21 49 17 36 25 28 C 31 22 40 26 40 33 C 40 26 49 22 55 28 C 63 36 59 49 40 64 Z" fill="url(#gHeart)"/>
+      <ellipse cx="31" cy="34" rx="4" ry="6" fill="#ffd9e2" opacity="0.8"/>
+      <ellipse cx="40" cy="14" rx="10" ry="3.5" fill="none" stroke="#ffe98a" stroke-width="3"/>
+      <path d="M63 52 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5 Z" fill="#fff"/>
+      <path d="M14 56 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2 Z" fill="#fff" opacity="0.85"/>
+    </symbol>
+
+    <symbol id="ch-bomb" viewBox="0 0 80 80">
+      <circle cx="40" cy="48" r="22" fill="url(#gBomb)"/>
+      <rect x="33" y="21" width="14" height="10" rx="3" fill="#3c4048"/>
+      <path d="M40 21 Q 44 10 54 12" stroke="#8a6a3c" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <g class="bomb-flame">
+        <circle cx="56" cy="11" r="6" fill="#ffb52e"/>
+        <circle cx="56" cy="10" r="3" fill="#fff2b0"/>
+      </g>
+      <ellipse cx="32" cy="41" rx="6" ry="8" fill="#5c6270" opacity="0.7"/>
+      <path d="M34 47 a6 6 0 0 1 12 0 v3.5 h-3 v3 h-6 v-3 h-3 Z" fill="#e84040"/>
+      <circle cx="37.5" cy="47" r="1.6" fill="#16181c"/>
+      <circle cx="42.5" cy="47" r="1.6" fill="#16181c"/>
+    </symbol>
+  </defs>
+</svg>
+
 <div id="app">
 
   <!-- ============ MAIN MENU ============ -->
@@ -18,18 +240,11 @@
     <div class="panel">
       <div class="hero">
         <svg viewBox="0 0 200 150" class="hero-ghost" aria-hidden="true">
-          <defs>
-            <radialGradient id="ghostBody" cx="40%" cy="30%" r="80%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="70%" stop-color="#e8e8ee"/>
-              <stop offset="100%" stop-color="#b9b9c9"/>
-            </radialGradient>
-          </defs>
           <path d="M100 15 C 55 15 40 55 40 90 L 40 128
                    Q 47 118 55 128 Q 63 138 71 128 Q 79 118 87 128
                    Q 95 138 103 128 Q 111 118 119 128 Q 127 138 135 128
                    Q 143 118 160 128 L 160 90 C 160 55 145 15 100 15 Z"
-                fill="url(#ghostBody)"/>
+                fill="url(#gGhost)"/>
           <ellipse cx="78" cy="70" rx="14" ry="18" fill="#16161d"/>
           <ellipse cx="124" cy="70" rx="14" ry="18" fill="#16161d"/>
           <ellipse cx="74" cy="63" rx="4" ry="5" fill="#4a4a5a"/>
@@ -43,6 +258,7 @@
         <button class="menu-btn" data-nav="game"><span class="ico">😃</span> START A NEW GAME</button>
         <button class="menu-btn" data-nav="howto"><span class="ico">❓</span> HOW TO PLAY</button>
         <button class="menu-btn" data-nav="scores"><span class="ico">🏆</span> HIGHSCORES</button>
+        <button class="menu-btn" data-nav="stats"><span class="ico">📊</span> STATS</button>
         <button class="menu-btn" data-nav="settings"><span class="ico">⚙️</span> SETTINGS</button>
       </nav>
     </div>
@@ -53,13 +269,29 @@
     <div class="panel">
       <h2 class="subtitle">👻 HOW TO PLAY</h2>
       <div class="text-box">
-        <p>The goal of this game is to score as many points as possible before the timer runs out — or before you lose all your lives!</p>
-        <p>Creatures appear in the windows of the haunted manor, one at a time. <strong>Tap the BAD guys</strong> to earn <strong>+3 points</strong>:</p>
-        <p class="char-row">👻 🧛 🐺 🎃 💀 😈 🧟 🧙</p>
-        <p>But watch out — <strong>GOOD guys</strong> live there too. Tap one of them and you <strong>lose a life 💔</strong>. Let a good guy leave safely and you earn <strong>+1 point</strong>:</p>
-        <p class="char-row">🐶 🐱 🐼 🐰 🦉 🐥</p>
-        <p>Careful though — if a bad guy escapes untapped, you <strong>lose 1 point</strong>!</p>
-        <p>You start with <strong>3 lives ❤️</strong> and a <strong>set timer ⏱️</strong> that depends on the difficulty. On higher difficulties creatures appear faster and wait less for you — but the timer is longer, so bigger scores are possible!</p>
+        <p>The night never ends — survive as long as you can and score as many points as possible! Creatures appear in the manor's windows one at a time, and the longer you last, the faster they get.</p>
+        <p><strong>Tap the BAD guys</strong> for <strong>+3 points</strong>. If one escapes untapped you <strong>lose 1 point</strong> — and if <strong>3 escape in a row</strong>, the ghosts overwhelm you and you <strong>lose a life 💔</strong>! Watch for the 👻 warnings next to your hearts:</p>
+        <p class="char-row">
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-ghost"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-vampire"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-werewolf"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-pumpkin"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-zombie"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-witch"/></svg>
+        </p>
+        <p><strong>Never tap the GOOD guys</strong> — that costs a <strong>life 💔</strong>. Let them leave safely for <strong>+1 point</strong>:</p>
+        <p class="char-row">
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-dog"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-cat"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-rabbit"/></svg>
+          <svg class="chip" viewBox="0 0 80 80"><use href="#ch-panda"/></svg>
+        </p>
+        <p>Chain bad-guy taps to build a <strong>COMBO</strong> — ×2 points at a 5 streak, ×3 at 10. Missing a bad guy or tapping a good guy breaks it!</p>
+        <p>Watch for <strong>rare visitors</strong>:</p>
+        <p class="special-row"><svg class="chip" viewBox="0 0 80 80"><use href="#ch-golden"/></svg> <span><strong>Golden ghost</strong> — +10 points, but gone in a blink!</span></p>
+        <p class="special-row"><svg class="chip" viewBox="0 0 80 80"><use href="#ch-fairy"/></svg> <span><strong>Heart fairy</strong> — tap her to win back a lost life. She visits at most 3 times a night!</span></p>
+        <p class="special-row"><svg class="chip" viewBox="0 0 80 80"><use href="#ch-bomb"/></svg> <span><strong>Bomb</strong> — do NOT tap, or it costs you a life!</span></p>
+        <p>You have <strong>3 lives ❤️</strong>. The game ends when you run out. Good luck!</p>
       </div>
       <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
     </div>
@@ -69,16 +301,30 @@
   <section class="screen" id="screen-scores">
     <div class="panel">
       <h2 class="subtitle">🏆 HIGHSCORES</h2>
-      <div class="hs-tabs">
-        <button class="hs-tab" data-board="easy">EASY</button>
-        <button class="hs-tab" data-board="medium">MEDIUM</button>
-        <button class="hs-tab" data-board="hard">HARD</button>
-      </div>
       <div class="text-box">
         <ol id="hs-list" class="hs-list"></ol>
         <p id="hs-empty" class="hs-empty">No scores yet — go tap some ghosts!</p>
       </div>
-      <button class="menu-btn danger small" id="btn-clear-scores"><span class="ico">🗑️</span> CLEAR THIS BOARD</button>
+      <button class="menu-btn danger small" id="btn-clear-scores"><span class="ico">🗑️</span> CLEAR SCORES</button>
+      <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="screen" id="screen-stats">
+    <div class="panel">
+      <h2 class="subtitle">📊 STATS</h2>
+      <div class="text-box">
+        <ul class="stat-list">
+          <li><span>Best score</span><b id="st-best">0</b></li>
+          <li><span>Longest night</span><b id="st-time">0:00</b></li>
+          <li><span>Best combo</span><b id="st-combo">0</b></li>
+          <li><span>Baddies tapped</span><b id="st-taps">0</b></li>
+          <li><span>Accuracy</span><b id="st-acc">—</b></li>
+          <li><span>Games played</span><b id="st-games">0</b></li>
+        </ul>
+      </div>
+      <div class="badge-grid" id="badge-grid"></div>
       <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
     </div>
   </section>
@@ -94,8 +340,8 @@
       <button class="menu-btn setting" id="btn-sound">
         <span><span class="ico">🔊</span> SOUND</span><span class="value" id="val-sound">ON</span>
       </button>
-      <button class="menu-btn setting" id="btn-difficulty">
-        <span><span class="ico">⭐</span> DIFFICULTY</span><span class="value" id="val-difficulty">EASY</span>
+      <button class="menu-btn setting" id="btn-haptics">
+        <span><span class="ico">📳</span> HAPTICS</span><span class="value" id="val-haptics">ON</span>
       </button>
       <button class="menu-btn back" data-nav="menu"><span class="ico">⬅️</span> BACK TO MENU</button>
     </div>
@@ -138,6 +384,18 @@
           <stop offset="0%" stop-color="#ffe9a8"/>
           <stop offset="100%" stop-color="#f4b942"/>
         </linearGradient>
+        <linearGradient id="glassGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fff6c4"/>
+          <stop offset="100%" stop-color="#ffca3a"/>
+        </linearGradient>
+        <linearGradient id="glassBomb" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff8a6a"/>
+          <stop offset="100%" stop-color="#c23a1e"/>
+        </linearGradient>
+        <linearGradient id="glassFairy" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffe1ea"/>
+          <stop offset="100%" stop-color="#ff9ab0"/>
+        </linearGradient>
         <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#0e1a14"/>
           <stop offset="100%" stop-color="#060d09"/>
@@ -150,7 +408,13 @@
           <line x1="0" y1="15" x2="40" y2="15" stroke="#000" stroke-opacity="0.3" stroke-width="2"/>
           <line x1="20" y1="8" x2="20" y2="15" stroke="#000" stroke-opacity="0.2" stroke-width="2"/>
         </pattern>
+        <clipPath id="sceneClip">
+          <rect x="0" y="0" width="800" height="1000"/>
+        </clipPath>
       </defs>
+
+      <!-- everything is clipped to the play area so nothing spills into the letterbox -->
+      <g clip-path="url(#sceneClip)">
 
       <!-- sky -->
       <rect x="0" y="0" width="800" height="1000" fill="url(#skyGrad)"/>
@@ -165,6 +429,28 @@
         <circle cx="132" cy="88" r="4" fill="#d4c896" opacity="0.5"/>
         <circle cx="150" cy="102" r="5" fill="#d4c896" opacity="0.45"/>
       </g>
+      <circle id="moonTint" cx="130" cy="115" r="53" fill="#a03028" opacity="0"/>
+
+      <!-- drifting clouds -->
+      <g id="clouds" fill="#0d1524">
+        <g class="cloud c1" opacity="0.65">
+          <ellipse cx="40" cy="90" rx="70" ry="20"/>
+          <ellipse cx="105" cy="80" rx="60" ry="24"/>
+          <ellipse cx="160" cy="92" rx="55" ry="17"/>
+        </g>
+        <g class="cloud c2" opacity="0.5">
+          <ellipse cx="30" cy="190" rx="60" ry="16"/>
+          <ellipse cx="90" cy="182" rx="55" ry="20"/>
+          <ellipse cx="140" cy="192" rx="45" ry="14"/>
+        </g>
+        <g class="cloud c3" opacity="0.55">
+          <ellipse cx="50" cy="60" rx="80" ry="18"/>
+          <ellipse cx="130" cy="52" rx="65" ry="22"/>
+        </g>
+      </g>
+
+      <!-- lightning bolts appear here -->
+      <g id="skyFx"></g>
 
       <!-- distant hills -->
       <path d="M0 880 Q 100 840 200 868 Q 320 892 420 862 Q 540 838 650 870 Q 730 888 800 866 L 800 1000 L 0 1000 Z" fill="#0a140e"/>
@@ -176,7 +462,6 @@
       <g id="trees" fill="#05080a" stroke="#05080a">
         <g class="tree">
           <path d="M85 880 L 92 720 L 60 640 L 70 636 L 96 700 L 100 590 L 78 520 L 88 516 L 104 580 L 112 500 L 122 502 L 112 596 L 142 540 L 150 546 L 116 616 L 112 700 L 148 650 L 156 658 L 112 730 L 108 880 Z" stroke-width="3" stroke-linejoin="round"/>
-          <!-- silhouette foliage -->
           <g fill="#070d10" stroke="none">
             <ellipse cx="78" cy="545" rx="48" ry="34"/>
             <ellipse cx="118" cy="502" rx="44" ry="32"/>
@@ -187,7 +472,6 @@
         </g>
         <g class="tree">
           <path d="M705 880 L 710 740 L 680 670 L 690 666 L 714 726 L 716 620 L 700 560 L 710 556 L 722 616 L 732 545 L 742 548 L 730 630 L 758 580 L 766 586 L 734 646 L 730 730 L 762 690 L 770 698 L 730 752 L 726 880 Z" stroke-width="3" stroke-linejoin="round"/>
-          <!-- silhouette foliage -->
           <g fill="#070d10" stroke="none">
             <ellipse cx="700" cy="608" rx="42" ry="30"/>
             <ellipse cx="736" cy="562" rx="44" ry="32"/>
@@ -241,6 +525,30 @@
         <rect x="352" y="792" width="3" height="14" fill="#555"/>
         <rect x="347" y="806" width="13" height="18" rx="3" fill="#221a08" stroke="#555" stroke-width="2"/>
         <circle class="lantern" cx="353.5" cy="815" r="4" fill="#ffce54"/>
+        <!-- boarded-up ground floor windows (decorative) -->
+        <g transform="translate(272 794)">
+          <rect x="-4" y="-4" width="52" height="64" rx="3" fill="#3a2b1e"/>
+          <rect x="0" y="0" width="44" height="56" fill="#0c1017"/>
+          <rect x="-6" y="10" width="56" height="9" rx="2" fill="#4a3826" transform="rotate(8 22 14)"/>
+          <rect x="-6" y="34" width="56" height="9" rx="2" fill="#42311f" transform="rotate(-7 22 38)"/>
+        </g>
+        <g transform="translate(524 794)">
+          <rect x="-4" y="-4" width="52" height="64" rx="3" fill="#3a2b1e"/>
+          <rect x="0" y="0" width="44" height="56" fill="#0c1017"/>
+          <rect x="-6" y="12" width="56" height="9" rx="2" fill="#42311f" transform="rotate(-9 22 16)"/>
+          <rect x="-6" y="36" width="56" height="9" rx="2" fill="#4a3826" transform="rotate(6 22 40)"/>
+        </g>
+      </g>
+
+      <!-- cat that sometimes walks along the eave -->
+      <g id="roofCat">
+        <g transform="translate(0 249)">
+          <ellipse cx="0" cy="8" rx="13" ry="7" fill="#05070c"/>
+          <circle cx="12" cy="0" r="7" fill="#05070c"/>
+          <path d="M7 -4 L 6 -12 L 12 -6 Z" fill="#05070c"/>
+          <path d="M17 -4 L 18 -12 L 12 -6 Z" fill="#05070c"/>
+          <path d="M-12 6 Q -22 0 -18 -10" stroke="#05070c" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </g>
       </g>
 
       <!-- cracks in the old walls (JS) -->
@@ -274,20 +582,32 @@
       <!-- bats flying around the house (JS) -->
       <g id="flyingBats"></g>
 
-      <!-- fx layer (score popups) -->
+      <!-- deep-night tint that grows as you survive -->
+      <rect id="nightTint" x="0" y="0" width="800" height="1000" fill="#33000a" opacity="0" pointer-events="none"/>
+
+      <!-- lightning flash -->
+      <rect id="flashRect" x="0" y="0" width="800" height="1000" fill="#eaf2ff" pointer-events="none"/>
+
+      <!-- fx layer (score popups, particles) -->
       <g id="fx"></g>
+
+      </g><!-- /sceneClip -->
     </svg>
 
     <!-- HUD -->
     <div id="hud">
       <div id="hud-lives" aria-label="Lives"></div>
-      <div id="hud-timer">3:00</div>
+      <div id="hud-combo"></div>
       <div id="hud-right">
         <div id="hud-score">Score: 0</div>
         <button id="btn-pause" title="Pause game" aria-label="Pause game">❚❚</button>
       </div>
+      <div id="speedbar" title="Night speed"><div id="speedcover"></div></div>
     </div>
     <div id="vignette"></div>
+
+    <!-- countdown intro -->
+    <div id="countdown"><span id="cd-num">3</span></div>
 
     <!-- pause menu -->
     <div id="pause-overlay">
@@ -302,9 +622,10 @@
   <!-- ============ GAME OVER ============ -->
   <section class="screen" id="screen-gameover">
     <div class="panel">
-      <h2 class="subtitle" id="go-title">⏱️ TIME'S UP!</h2>
+      <h2 class="subtitle" id="go-title">💀 OUT OF LIVES!</h2>
       <div class="text-box center">
         <p class="go-score">SCORE: <span id="go-score">0</span></p>
+        <p class="go-line" id="go-run"></p>
         <p class="go-best" id="go-best">Best: 0</p>
         <p class="go-new" id="go-new">🎉 NEW HIGHSCORE! 🎉</p>
         <div id="go-namerow">
@@ -321,6 +642,9 @@
   </section>
 
 </div>
+
+<div id="toasts"></div>
+
 <script src="game.js"></script>
 </body>
 </html>
