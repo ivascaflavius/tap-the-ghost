@@ -4,7 +4,7 @@ A spooky whack-a-mole arcade game set around a haunted manor on a starry night. 
 
 **▶️ Play it live: [https://ivascaflavius.github.io/tap-the-ghost](https://ivascaflavius.github.io/tap-the-ghost)**
 
-This is a web remake of *Zap the Ghost*, an Android game I built ~10 years ago with AndEngine (long since delisted). Same idea, new name, and no app store required — it runs in any modern browser on desktop, tablet, or phone.
+This is a web remake of *Zap the Ghost*, an Android game I built with AndEngine, published in 2012, and delisted in 2016. Same idea, new name, and no app store required — it runs in any modern browser on desktop, tablet, or phone. The remake was designed by me and built with AI-assisted coding (Claude Code).
 
 ## How to play
 

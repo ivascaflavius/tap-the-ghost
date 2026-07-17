@@ -141,6 +141,23 @@ html, body {
 .menu-btn.danger { color: #e08a7a; }
 .menu-btn.small { font-size: 0.95rem; padding: 10px 16px; min-height: 44px; }
 
+a.menu-btn { text-decoration: none; }
+
+.menu-foot { text-align: center; margin-top: 6px; }
+.linklike {
+  background: none;
+  border: none;
+  padding: 8px;
+  font-family: Impact, "Arial Black", sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+  color: #8fd0dc;
+  text-decoration: underline dotted;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.linklike:hover { color: #ffd75e; opacity: 1; }
+
 /* name inputs */
 .name-input {
   font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
